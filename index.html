@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Split & Rename Tool</title>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    padding:30px;
+}
+
+.container{
+    max-width:700px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+
+h2{
+    text-align:center;
+}
+
+input,button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+}
+
+#splits div{
+    border:1px solid #ddd;
+    padding:10px;
+    margin-top:10px;
+    border-radius:5px;
+}
+
+button{
+    background:#2196F3;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1976D2;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h2>PDF Split & Rename Tool</h2>
+
+<input type="file" id="pdfFile" accept=".pdf">
+
+<p id="pages"></p>
+
+<div id="splits"></div>
+
+<button onclick="addSplit()">Add Split</button>
+
+<button onclick="splitPDF()">Split PDF</button>
+
+</div>
+
+<script>
+
+let pdfBytes;
+let pdfDoc;
+
+document.getElementById("pdfFile").addEventListener("change", async function(e){
+
+const file=e.target.files[0];
+
+if(!file)return;
+
+pdfBytes=await file.arrayBuffer();
+
+pdfDoc=await PDFLib.PDFDocument.load(pdfBytes);
+
+document.getElementById("pages").innerHTML=
+"Total Pages : "+pdfDoc.getPageCount();
+
+document.getElementById("splits").innerHTML="";
+
+});
+
+function addSplit(){
+
+const div=document.createElement("div");
+
+div.innerHTML=`
+
+<label>Pages (Example: 1-3)</label>
+<input class="range" placeholder="1-3">
+
+<label>Output File Name</label>
+<input class="name" placeholder="chapter1">
+
+`;
+
+document.getElementById("splits").appendChild(div);
+
+}
+
+async function splitPDF(){
+
+if(!pdfDoc){
+alert("Upload PDF first");
+return;
+}
+
+const splits=document.querySelectorAll("#splits div");
+
+for(const s of splits){
+
+const range=s.querySelector(".range").value;
+
+const name=s.querySelector(".name").value || "output";
+
+if(!range)continue;
+
+const parts=range.split("-");
+
+const start=parseInt(parts[0])-1;
+const end=parseInt(parts[1])-1;
+
+const newPdf=await PDFLib.PDFDocument.create();
+
+const copied=await newPdf.copyPages(pdfDoc,
+Array.from({length:end-start+1},(_,i)=>start+i));
+
+copied.forEach(p=>newPdf.addPage(p));
+
+const bytes=await newPdf.save();
+
+const blob=new Blob([bytes],{type:"application/pdf"});
+
+const link=document.createElement("a");
+
+link.href=URL.createObjectURL(blob);
+
+link.download=name+".pdf";
+
+link.click();
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
